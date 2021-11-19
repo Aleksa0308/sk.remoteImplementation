@@ -11,7 +11,9 @@ import org.jetbrains.annotations.NotNull;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.lang.reflect.Array;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
@@ -182,8 +184,66 @@ public class RemoteImplementation implements IODriver {
 
     }
 
+    private String createMimeType(String s){
+        String extension = "";
+
+        int i = s.lastIndexOf('.');
+        int p = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
+
+        if (i > p) {
+            extension = s.substring(i+1);
+        }
+
+        if(extension.equals("txt")){
+            return "text/plain";
+        }else if(extension.equals("html")){
+            return "text/html";
+        }else if(extension.equals("jpeg")){
+            return "image/jpeg";
+        }else if(extension.equals("png")){
+            return "image/png";
+        }else if(extension.equals("json")){
+            return "application/vnd.google-apps.script+json";
+        }else{
+            return null;
+        }
+    }
+
     @Override
     public FileBuilder uploadFile(String s, String s1) {
+        Path p = Path.of(s1);
+        String type = createMimeType(p.getFileName().toString());
+        System.out.println("TYPE: " + type);
+        if(type.equals("application/vnd.google-apps.script+json")){
+            File fileMetadata = new File();
+            fileMetadata.setName(p.getFileName().toString());
+            fileMetadata.setMimeType("application/vnd.google-apps.script+json");
+            java.io.File filePath = new java.io.File(s1);
+            FileContent mediaContent = new FileContent("text/plain", filePath);
+            File file = null;
+            try {
+                file = driveService.files().create(fileMetadata, mediaContent)
+                        .setFields("id")
+                        .execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println("File ID: " + file.getId());
+        }else {
+            File fileMetadata = new File();
+            fileMetadata.setName(p.getFileName().toString());
+            java.io.File filePath = new java.io.File(s1);
+            FileContent mediaContent = new FileContent(type, filePath);
+            File file = null;
+            try {
+                file = driveService.files().create(fileMetadata, mediaContent)
+                        .setFields("id")
+                        .execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            System.out.println("File ID: " + file.getId());
+        }
         return null;
     }
 
@@ -220,16 +280,34 @@ public class RemoteImplementation implements IODriver {
 
     @Override
     public String readConfig(String s) {
+
         return null;
     }
 
     @Override
     public void writeConfig(String s, String s1) {
+        try {
+            Path p = Path.of(s1);
+            Files.createFile(Path.of(s1));
+            PrintWriter pw = new PrintWriter(s1);
+            pw.append(s);
+            File fileMetadata = new File();
+            fileMetadata.setName(p.getFileName().toString());
+            java.io.File filePath = new java.io.File(s1);
+            FileContent mediaContent = new FileContent("text/plain", filePath);
+            File file = driveService.files().create(fileMetadata, mediaContent)
+                    .setFields("id")
+                    .execute();
+            System.out.println("File ID: " + file.getId());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
 
     }
 
     @Override
-    public @NotNull DirectoryBuilder initStorage(String s) {
+    public @NotNull DirectoryBuilder initStorage() {
         return null;
     }
 }
