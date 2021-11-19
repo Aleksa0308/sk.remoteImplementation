@@ -1,26 +1,41 @@
+package com.raf.sk.remoteImplementation;
+
 import com.google.api.client.http.FileContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
-import com.google.common.io.ByteArrayDataOutput;
 import com.raf.sk.specification.builders.DirectoryBuilder;
 import com.raf.sk.specification.builders.FileBuilder;
+import com.raf.sk.specification.builders.INodeBuilder;
+import com.raf.sk.specification.exceptions.IODriverException;
 import com.raf.sk.specification.io.IODriver;
+import com.raf.sk.specification.io.IOManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.lang.reflect.Array;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 
 public class RemoteImplementation implements IODriver {
 
-    Drive driveService = GoogleDriveApi.getDriveService();
+    private static final String INODE_SEPARATOR = "/";
 
-    public RemoteImplementation() throws IOException {
+    static {
+        IOManager.setIODriver(new RemoteImplementation());
+    }
+
+    private String srcPath;
+
+    private Drive driveService;
+
+    public RemoteImplementation() {
+        try {
+            this.driveService = GoogleDriveApi.getDriveService();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -228,8 +243,91 @@ public class RemoteImplementation implements IODriver {
 
     }
 
+    // #TODO ovo mora da se implementira
     @Override
-    public @NotNull DirectoryBuilder initStorage(String s) {
+    public @NotNull DirectoryBuilder initStorage() {
         return null;
+    }
+
+
+    /**
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     * #TODO preporučujem ti da koristiš ove metode ispod, samo da ih prilagodiš za Google Drive
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     *
+     */
+
+    /**
+     * Vraća sistemski fajl separator.
+     *
+     * @return Sistemski fajl separator.
+     */
+    private String getSeparator() {
+        return System.getProperty("file.separator");
+    }
+
+    /**
+     * Pretvara path koji je dala aplikacija u apsolutni path za korisničko okruženje. Može se pozivati SAMO nakon
+     * inicijalnog čitanja direktorijuma.
+     *
+     * @param appPath Path iz aplikacije.
+     * @return Krajnji path.
+     */
+    private String resolvePath(String appPath) {
+        if (srcPath == null)
+            throw new IODriverException(
+                    "Programming error: you cannot call resolvePath() before reading the config!"
+            );
+
+        String sep = getSeparator();
+        if (!srcPath.endsWith(sep)) {
+            srcPath = srcPath + sep;
+        }
+
+        if (appPath.startsWith(INODE_SEPARATOR))
+            appPath = appPath.substring(1);
+
+        if (sep.equals("\\")) sep = "\\\\";
+        appPath = appPath.replaceAll(INODE_SEPARATOR, sep);
+        return srcPath + appPath;
+    }
+
+    /**
+     * Prolazi kroz direktorijum rekurzivno i pravi DirectoryBuilder.
+     *
+     * @param parent DirectoryBuilder koji se gradi.
+     * @param file   Korenski File objekat.
+     * @return Vraća korensko DirectoryBuilder stablo.
+     */
+    private INodeBuilder traverse(DirectoryBuilder parent, java.io.File file) {
+        for (java.io.File f : file.listFiles()) {
+            if (f.isFile()) {
+                parent.addChild(new FileBuilder(
+                        parent,
+                        f.getName(),
+                        f.length()
+                ));
+            } else {
+                DirectoryBuilder db = new DirectoryBuilder(
+                        parent,
+                        f.getName()
+                );
+                parent.addChild(db);
+                traverse(db, f);
+            }
+        }
+        return parent;
     }
 }
