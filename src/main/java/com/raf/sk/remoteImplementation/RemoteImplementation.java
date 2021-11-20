@@ -389,7 +389,11 @@ public class RemoteImplementation implements IODriver {
 
     @Override
     public String readConfig(String s) {
-        srcPath = s.substring(0, s.lastIndexOf("/"));
+        if (s.lastIndexOf("/") == -1) {
+            srcPath = s;
+        } else {
+            srcPath = s.substring(0, s.lastIndexOf("/"));
+        }
         String pageToken = null;
         do {
             FileList result = null;
