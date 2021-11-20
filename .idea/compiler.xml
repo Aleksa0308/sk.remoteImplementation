@@ -8,6 +8,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="sk.RemoteImplementation" />
         <module name="sk.Remotemplementation" />
+        <module name="sk.remoteImplementation" />
       </profile>
     </annotationProcessing>
   </component>

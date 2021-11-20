@@ -43,7 +43,7 @@ public class RemoteImplementation implements IODriver {
     @Override
     public void makeDirectory(String s) {
         File fileMetadata = new File();
-        fileMetadata.setName(s);
+        fileMetadata.setName(resolvePath(s));
         fileMetadata.setMimeType("application/vnd.google-apps.folder");
 
         File file = null;
@@ -62,7 +62,7 @@ public class RemoteImplementation implements IODriver {
         File fileMetadata = new File();
         Path path = Path.of(s);
         fileMetadata.setName(path.getFileName().toString());
-        java.io.File filePath = new java.io.File(s);
+        java.io.File filePath = new java.io.File(resolvePath(s));
         FileContent mediaContent = new FileContent(fileMetadata.getFileExtension(), filePath);
         File file = null;
         try {
@@ -93,7 +93,7 @@ public class RemoteImplementation implements IODriver {
             System.out.println("No files found.");
         } else {
             for (File file : files) {
-                if (file.getName().equals(s)) {
+                if (file.getName().equals(resolvePath(s))) {
                     try {
                         driveService.files().delete(file.getId()).execute();
                     } catch (IOException e) {
@@ -427,19 +427,19 @@ public class RemoteImplementation implements IODriver {
         String fileId = "";
         String folderId = "";
         try {
-            Files.createFile(Path.of("config.json"));
-            PrintWriter pw = new PrintWriter("config.json");
+            Files.createFile(Path.of("31891jgjsd98j.json"));
+            PrintWriter pw = new PrintWriter("31891jgjsd98j.json");
             pw.append(s);
             pw.close();
             File fileMetadata = new File();
             fileMetadata.setName("config.json");
-            java.io.File filePath = new java.io.File("config.json");
+            java.io.File filePath = new java.io.File("31891jgjsd98j.json");
             FileContent mediaContent = new FileContent("text/plain", filePath);
             File file = driveService.files().create(fileMetadata, mediaContent)
                     .setFields("id")
                     .execute();
             System.out.println("File ID: " + file.getId());
-            Files.delete(Path.of("config.json"));
+            Files.delete(Path.of("31891jgjsd98j.json"));
 
             //MOVE FILE
             fileId = file.getId();
