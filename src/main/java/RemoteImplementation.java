@@ -5,6 +5,7 @@ import com.google.api.services.drive.model.FileList;
 import com.google.common.io.ByteArrayDataOutput;
 import com.raf.sk.specification.builders.DirectoryBuilder;
 import com.raf.sk.specification.builders.FileBuilder;
+import com.raf.sk.specification.builders.INodeBuilder;
 import com.raf.sk.specification.exceptions.IODriverException;
 import com.raf.sk.specification.io.IODriver;
 import com.raf.sk.specification.io.IOManager;
@@ -323,6 +324,7 @@ public class RemoteImplementation implements IODriver {
                 file = driveService.files().create(fileMetadata, mediaContent)
                         .setFields("id")
                         .execute();
+                return new FileBuilder(new DirectoryBuilder(), file.getName(), file.getSize());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -337,6 +339,7 @@ public class RemoteImplementation implements IODriver {
                 file = driveService.files().create(fileMetadata, mediaContent)
                         .setFields("id")
                         .execute();
+                return new FileBuilder(new DirectoryBuilder(), file.getName(), file.getSize());
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -485,8 +488,70 @@ public class RemoteImplementation implements IODriver {
 
     @Override
     public @NotNull DirectoryBuilder initStorage() {
+        File fileMetadata = new File();
+        fileMetadata.setName(srcPath);
+        fileMetadata.setMimeType("application/vnd.google-apps.folder");
+
+        File root = null;
+        try {
+            root = driveService.files().create(fileMetadata)
+                    .setFields("id")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        root.setMimeType("application/vnd.google-apps.folder");
+        System.out.println(root.getMimeType());
+        if(root.getMimeType() == "application/vnd.google-apps.folder"){
+            DirectoryBuilder db = new DirectoryBuilder(null, DirectoryBuilder.ROOT_DIRECTORY);
+            try {
+                return (DirectoryBuilder) traverse(db, root);
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            throw new IODriverException(
+                    "Cannot initiate root on file!"
+            );
+        }
         return null;
     }
+
+
+    private INodeBuilder traverse(DirectoryBuilder parent, File file) throws IOException {
+        String pageToken = null;
+        do {
+            FileList result = driveService.files().list()
+                    .setSpaces("drive")
+                    .setFields("nextPageToken, files(id, name)")
+                    .setPageToken(pageToken)
+                    .execute();
+            for (File file2 : result.getFiles()) {
+                if(file.getParents() == null){
+                    break;
+                }
+                    if (file.getParents().equals(file.getParents()) && file.getParents()!=null) {
+                        parent.addChild(new FileBuilder(
+                                parent,
+                                file2.getName(),
+                                file2.getSize()
+
+                        ));
+                }else{
+                    DirectoryBuilder db = new DirectoryBuilder(
+                            parent,
+                            file2.getName()
+                    );
+                    parent.addChild(db);
+                    traverse(db, file2);
+                }
+
+            }
+            pageToken = result.getNextPageToken();
+        } while (pageToken != null);
+        return parent;
+    }
+
 
 
     /**
