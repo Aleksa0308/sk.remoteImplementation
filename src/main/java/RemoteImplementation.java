@@ -5,7 +5,9 @@ import com.google.api.services.drive.model.FileList;
 import com.google.common.io.ByteArrayDataOutput;
 import com.raf.sk.specification.builders.DirectoryBuilder;
 import com.raf.sk.specification.builders.FileBuilder;
+import com.raf.sk.specification.exceptions.IODriverException;
 import com.raf.sk.specification.io.IODriver;
+import com.raf.sk.specification.io.IOManager;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.ByteArrayOutputStream;
@@ -21,6 +23,18 @@ import java.util.List;
 public class RemoteImplementation implements IODriver {
 
     Drive driveService = GoogleDriveApi.getDriveService();
+
+    private static final String INODE_SEPARATOR = "/";
+
+    static {
+        try {
+            IOManager.setIODriver(new RemoteImplementation());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private String srcPath;
 
     public RemoteImplementation() throws IOException {
     }
@@ -353,6 +367,7 @@ public class RemoteImplementation implements IODriver {
                     try {
                         driveService.files().get(fileId)
                                 .executeMediaAndDownloadTo(outputStream);
+                        System.out.println(outputStream.toString());
                     } catch (IOException e) {
                         e.printStackTrace();
                     }
@@ -367,7 +382,36 @@ public class RemoteImplementation implements IODriver {
 
     @Override
     public String readConfig(String s) {
+        String pageToken = null;
+        do {
+            FileList result = null;
+            try {
+                result = driveService.files().list()
+                        .setSpaces("drive")
+                        .setFields("nextPageToken, files(id, name)")
+                        .setPageToken(pageToken)
+                        .execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            for (File file : result.getFiles()) {
+                if(file.getName().equals(s)) {
+                    OutputStream outputStream = new ByteArrayOutputStream();
+                    try {
+                        driveService.files().get(file.getId())
+                                .executeMediaAndDownloadTo(outputStream);
+                        System.out.println(outputStream.toString());
+                        return outputStream.toString();
 
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    System.out.printf("Found file: %s (%s)\n",
+                            file.getName(), file.getId());
+                }
+            }
+            pageToken = result.getNextPageToken();
+        } while (pageToken != null);
         return null;
     }
 
@@ -443,4 +487,41 @@ public class RemoteImplementation implements IODriver {
     public @NotNull DirectoryBuilder initStorage() {
         return null;
     }
+
+
+    /**
+     * Vraća sistemski fajl separator.
+     *
+     * @return Sistemski fajl separator.
+     */
+    private String getSeparator() {
+        return System.getProperty("file.separator");
+    }
+
+    /**
+     * Pretvara path koji je dala aplikacija u apsolutni path za korisničko okruženje. Može se pozivati SAMO nakon
+     * inicijalnog čitanja direktorijuma.
+     *
+     * @param appPath Path iz aplikacije.
+     * @return Krajnji path.
+     */
+    private String resolvePath(String appPath) {
+        if (srcPath == null)
+            throw new IODriverException(
+                    "Programming error: you cannot call resolvePath() before reading the config!"
+            );
+
+        String sep = getSeparator();
+        if (!srcPath.endsWith(sep)) {
+            srcPath = srcPath + sep;
+        }
+
+        if (appPath.startsWith(INODE_SEPARATOR))
+            appPath = appPath.substring(1);
+
+        if (sep.equals("\\")) sep = "\\\\";
+        appPath = appPath.replaceAll(INODE_SEPARATOR, sep);
+        return srcPath + appPath;
+    }
+
 }
