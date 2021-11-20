@@ -446,6 +446,7 @@ public class RemoteImplementation implements IODriver {
             System.out.println("File ID: " + file.getId());
             Files.delete(Path.of("31891jgjsd98j.json"));
 
+            /*
             //MOVE FILE
             fileId = file.getId();
             String pageToken = null;
@@ -487,8 +488,9 @@ public class RemoteImplementation implements IODriver {
                     .setRemoveParents(previousParents.toString())
                     .setFields("id, parents")
                     .execute();
+         */
         } catch (IOException e) {
-            e.printStackTrace();
+            new IODriverException(e.getMessage());
         }
 
     }
