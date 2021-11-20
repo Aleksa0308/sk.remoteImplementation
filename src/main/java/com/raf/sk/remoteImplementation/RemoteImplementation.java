@@ -16,29 +16,29 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
-import java.lang.reflect.Array;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.Arrays;
 import java.util.List;
 
 public class RemoteImplementation implements IODriver {
 
-    Drive driveService = GoogleDriveApi.getDriveService();
-
     private static final String INODE_SEPARATOR = "/";
 
     static {
-        try {
-            IOManager.setIODriver(new RemoteImplementation());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        IOManager.setIODriver(new RemoteImplementation());
     }
 
     private String srcPath;
 
-    public RemoteImplementation() throws IOException {
+    private Drive driveService;
+
+    public RemoteImplementation() {
+        try {
+            driveService = GoogleDriveApi.getDriveService();
+        } catch (IOException e) {
+            e.printStackTrace();
+            System.exit(0);
+        }
     }
 
     @Override
@@ -149,7 +149,7 @@ public class RemoteImplementation implements IODriver {
                 e.printStackTrace();
             }
             for (File file : result.getFiles()) {
-                if(file.getName().equals(s)) {
+                if (file.getName().equals(s)) {
                     srcFolderId = file.getId();
                     System.out.printf("Found folder: %s (%s)\n",
                             file.getName(), file.getId());
@@ -171,7 +171,7 @@ public class RemoteImplementation implements IODriver {
                 e.printStackTrace();
             }
             for (File file2 : result.getFiles()) {
-                if(file2.getName().equals(s1)) {
+                if (file2.getName().equals(s1)) {
                     trgFolderId = file2.getId();
                     System.out.printf("Found folder: %s (%s)\n",
                             file2.getName(), file2.getId());
@@ -223,7 +223,7 @@ public class RemoteImplementation implements IODriver {
                 e.printStackTrace();
             }
             for (File file : result.getFiles()) {
-                if(file.getName().equals(s)) {
+                if (file.getName().equals(s)) {
                     fileId = file.getId();
                     System.out.printf("Found file: %s (%s)\n",
                             file.getName(), file.getId());
@@ -245,7 +245,7 @@ public class RemoteImplementation implements IODriver {
                 e.printStackTrace();
             }
             for (File file2 : result.getFiles()) {
-                if(file2.getName().equals(s1)) {
+                if (file2.getName().equals(s1)) {
                     folderId = file2.getId();
                     System.out.printf("Found file: %s (%s)\n",
                             file2.getName(), file2.getId());
@@ -284,27 +284,27 @@ public class RemoteImplementation implements IODriver {
 
     }
 
-    private String createMimeType(String s){
+    private String createMimeType(String s) {
         String extension = "";
 
         int i = s.lastIndexOf('.');
         int p = Math.max(s.lastIndexOf('/'), s.lastIndexOf('\\'));
 
         if (i > p) {
-            extension = s.substring(i+1);
+            extension = s.substring(i + 1);
         }
 
-        if(extension.equals("txt")){
+        if (extension.equals("txt")) {
             return "text/plain";
-        }else if(extension.equals("html")){
+        } else if (extension.equals("html")) {
             return "text/html";
-        }else if(extension.equals("jpeg")){
+        } else if (extension.equals("jpeg")) {
             return "image/jpeg";
-        }else if(extension.equals("png")){
+        } else if (extension.equals("png")) {
             return "image/png";
-        }else if(extension.equals("json")){
+        } else if (extension.equals("json")) {
             return "application/vnd.google-apps.script+json";
-        }else{
+        } else {
             return null;
         }
     }
@@ -314,7 +314,7 @@ public class RemoteImplementation implements IODriver {
         Path p = Path.of(s1);
         String type = createMimeType(p.getFileName().toString());
         System.out.println("TYPE: " + type);
-        if(type.equals("application/vnd.google-apps.script+json")){
+        if (type.equals("application/vnd.google-apps.script+json")) {
             File fileMetadata = new File();
             fileMetadata.setName(p.getFileName().toString());
             fileMetadata.setMimeType("application/vnd.google-apps.script+json");
@@ -330,7 +330,7 @@ public class RemoteImplementation implements IODriver {
                 e.printStackTrace();
             }
             System.out.println("File ID: " + file.getId());
-        }else {
+        } else {
             File fileMetadata = new File();
             fileMetadata.setName(p.getFileName().toString());
             java.io.File filePath = new java.io.File(s1);
@@ -365,13 +365,13 @@ public class RemoteImplementation implements IODriver {
                 e.printStackTrace();
             }
             for (File file : result.getFiles()) {
-                if(file.getName().equals(s)) {
+                if (file.getName().equals(s)) {
                     fileId = file.getId();
                     OutputStream outputStream = new ByteArrayOutputStream();
                     try {
                         driveService.files().get(fileId)
                                 .executeMediaAndDownloadTo(outputStream);
-                        Files.createFile(Path.of (s1 + "\\" + Path.of(file.getName())));
+                        Files.createFile(Path.of(s1 + "\\" + Path.of(file.getName())));
                         PrintWriter pw = new PrintWriter(s1 + "\\" + file.getName());
                         pw.append(outputStream.toString());
                         pw.close();
@@ -403,7 +403,7 @@ public class RemoteImplementation implements IODriver {
                 e.printStackTrace();
             }
             for (File file : result.getFiles()) {
-                if(file.getName().equals(s)) {
+                if (file.getName().equals(s)) {
                     OutputStream outputStream = new ByteArrayOutputStream();
                     try {
                         driveService.files().get(file.getId())
@@ -452,7 +452,7 @@ public class RemoteImplementation implements IODriver {
                         .setPageToken(pageToken)
                         .execute();
                 for (File file2 : result.getFiles()) {
-                    if(file2.getName().equals(s1)){
+                    if (file2.getName().equals(s1)) {
                         folderId = file2.getId();
                     }
                     System.out.printf("Found file: %s (%s)\n",
@@ -491,7 +491,6 @@ public class RemoteImplementation implements IODriver {
 
     }
 
-    // #TODO ovo mora da se implementira
     @Override
     public @NotNull DirectoryBuilder initStorage() {
         File fileMetadata = new File();
@@ -508,7 +507,7 @@ public class RemoteImplementation implements IODriver {
         }
         root.setMimeType("application/vnd.google-apps.folder");
         System.out.println(root.getMimeType());
-        if(root.getMimeType() == "application/vnd.google-apps.folder"){
+        if (root.getMimeType() == "application/vnd.google-apps.folder") {
             DirectoryBuilder db = new DirectoryBuilder(null, DirectoryBuilder.ROOT_DIRECTORY);
             try {
                 return (DirectoryBuilder) traverse(db, root);
@@ -522,26 +521,6 @@ public class RemoteImplementation implements IODriver {
         }
         return null;
     }
-
-
-    /**
-     *
-     *
-     *
-     *
-     *
-     *
-     *
-     * #TODO preporučujem ti da koristiš ove metode ispod, samo da ih prilagodiš za Google Drive
-     *
-     *
-     *
-     *
-     *
-     *
-     *
-     *
-     */
 
     /**
      * Vraća sistemski fajl separator.
@@ -585,27 +564,6 @@ public class RemoteImplementation implements IODriver {
      * @param file   Korenski File objekat.
      * @return Vraća korensko DirectoryBuilder stablo.
      */
-    private INodeBuilder traverse(DirectoryBuilder parent, java.io.File file) {
-        for (java.io.File f : file.listFiles()) {
-            if (f.isFile()) {
-                parent.addChild(new FileBuilder(
-                        parent,
-                        f.getName(),
-                        f.length()
-                ));
-            } else {
-                DirectoryBuilder db = new DirectoryBuilder(
-                        parent,
-                        f.getName()
-                );
-                parent.addChild(db);
-                traverse(db, f);
-            }
-        }
-        return parent;
-    }
-
-
     private INodeBuilder traverse(DirectoryBuilder parent, File file) throws IOException {
         String pageToken = null;
         do {
@@ -615,17 +573,17 @@ public class RemoteImplementation implements IODriver {
                     .setPageToken(pageToken)
                     .execute();
             for (File file2 : result.getFiles()) {
-                if(file.getParents() == null){
+                if (file.getParents() == null) {
                     break;
                 }
-                    if (file.getParents().equals(file.getParents()) && file.getParents()!=null) {
-                        parent.addChild(new FileBuilder(
-                                parent,
-                                file2.getName(),
-                                file2.getSize()
+                if (file.getParents().equals(file.getParents()) && file.getParents() != null) {
+                    parent.addChild(new FileBuilder(
+                            parent,
+                            file2.getName(),
+                            file2.getSize()
 
-                        ));
-                }else{
+                    ));
+                } else {
                     DirectoryBuilder db = new DirectoryBuilder(
                             parent,
                             file2.getName()
@@ -638,43 +596,6 @@ public class RemoteImplementation implements IODriver {
             pageToken = result.getNextPageToken();
         } while (pageToken != null);
         return parent;
-    }
-
-
-
-    /**
-     * Vraća sistemski fajl separator.
-     *
-     * @return Sistemski fajl separator.
-     */
-    private String getSeparator() {
-        return System.getProperty("file.separator");
-    }
-
-    /**
-     * Pretvara path koji je dala aplikacija u apsolutni path za korisničko okruženje. Može se pozivati SAMO nakon
-     * inicijalnog čitanja direktorijuma.
-     *
-     * @param appPath Path iz aplikacije.
-     * @return Krajnji path.
-     */
-    private String resolvePath(String appPath) {
-        if (srcPath == null)
-            throw new IODriverException(
-                    "Programming error: you cannot call resolvePath() before reading the config!"
-            );
-
-        String sep = getSeparator();
-        if (!srcPath.endsWith(sep)) {
-            srcPath = srcPath + sep;
-        }
-
-        if (appPath.startsWith(INODE_SEPARATOR))
-            appPath = appPath.substring(1);
-
-        if (sep.equals("\\")) sep = "\\\\";
-        appPath = appPath.replaceAll(INODE_SEPARATOR, sep);
-        return srcPath + appPath;
     }
 
 }
