@@ -370,6 +370,10 @@ public class RemoteImplementation implements IODriver {
                     try {
                         driveService.files().get(fileId)
                                 .executeMediaAndDownloadTo(outputStream);
+                        Files.createFile(Path.of (s1 + "\\" + Path.of(file.getName())));
+                        PrintWriter pw = new PrintWriter(s1 + "\\" + file.getName());
+                        pw.append(outputStream.toString());
+                        pw.close();
                         System.out.println(outputStream.toString());
                     } catch (IOException e) {
                         e.printStackTrace();
