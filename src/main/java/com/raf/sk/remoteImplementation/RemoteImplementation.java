@@ -531,20 +531,7 @@ public class RemoteImplementation implements IODriver {
      * @return Krajnji path.
      */
     private String resolvePath(String appPath) {
-        if (srcPath == null)
-            throw new IODriverException(
-                    "Programming error: you cannot call resolvePath() before reading the config!"
-            );
-
-        String sep = INODE_SEPARATOR;
-        if (!srcPath.endsWith(sep)) {
-            srcPath = srcPath + sep;
-        }
-
-        if (appPath.startsWith(INODE_SEPARATOR))
-            appPath = appPath.substring(1);
-
-        return srcPath + appPath;
+        return appPath;
     }
 
     /**
