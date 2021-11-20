@@ -123,53 +123,68 @@ public class RemoteImplementation implements IODriver {
 
     @Override
     public void moveFile(String s, String s1) {
-        String fileId = null;
-        String folderId = null;
-        FileList result = null;
-        try {
-            result = driveService.files().list()
-                    .setPageSize(10)
-                    .setFields("nextPageToken, files(id, name)")
-                    .execute();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        List<File> files = result.getFiles();
-        if (files == null || files.isEmpty()) {
-            System.out.println("No files found.");
-        } else {
-            for (File file : files) {
-                if (file.getName().equals(s)) {
+        String fileId = "";
+        String folderId = "";
+        String pageToken = null;
+        do {
+            FileList result = null;
+            try {
+                result = driveService.files().list()
+                        .setSpaces("drive")
+                        .setFields("nextPageToken, files(id, name)")
+                        .setPageToken(pageToken)
+                        .execute();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            for (File file : result.getFiles()) {
+                if(file.getName().equals(s)) {
                     fileId = file.getId();
-                    System.out.println("FILE NAME: " + file.getName());
+                    System.out.printf("Found file: %s (%s)\n",
+                            file.getName(), file.getId());
                 }
             }
-        }
+            pageToken = result.getNextPageToken();
+        } while (pageToken != null);
 
-        for (File file : files) {
-            if (file.getName().equals(s1)) {
-                folderId = file.getId();
-                System.out.println("FOLDER NAME: " + file.getName());
+        pageToken = null;
+        do {
+            FileList result = null;
+            try {
+                result = driveService.files().list()
+                        .setSpaces("drive")
+                        .setFields("nextPageToken, files(id, name)")
+                        .setPageToken(pageToken)
+                        .execute();
+            } catch (IOException e) {
+                e.printStackTrace();
             }
-        }
+            for (File file2 : result.getFiles()) {
+                if(file2.getName().equals(s1)) {
+                    folderId = file2.getId();
+                    System.out.printf("Found file: %s (%s)\n",
+                            file2.getName(), file2.getId());
+                }
+            }
+            pageToken = result.getNextPageToken();
+        } while (pageToken != null);
 
-// Retrieve the existing parents to remove
-        File file2 = null;
+        File file3 = null;
         try {
-            file2 = driveService.files().get(fileId)
+            file3 = driveService.files().get(fileId)
                     .setFields("parents")
                     .execute();
         } catch (IOException e) {
             e.printStackTrace();
         }
         StringBuilder previousParents = new StringBuilder();
-        for (String parent : file2.getParents()) {
+        for (String parent : file3.getParents()) {
             previousParents.append(parent);
             previousParents.append(',');
         }
 // Move the file to the new folder
         try {
-            file2 = driveService.files().update(fileId, null)
+            file3 = driveService.files().update(fileId, null)
                     .setAddParents(folderId)
                     .setRemoveParents(previousParents.toString())
                     .setFields("id, parents")
@@ -286,23 +301,69 @@ public class RemoteImplementation implements IODriver {
 
     @Override
     public void writeConfig(String s, String s1) {
+        String fileId = "";
+        String folderId = "";
         try {
-            Path p = Path.of(s1);
-            Files.createFile(Path.of(s1));
-            PrintWriter pw = new PrintWriter(s1);
+            Files.createFile(Path.of("config.json"));
+            PrintWriter pw = new PrintWriter("config.json");
             pw.append(s);
+            pw.close();
             File fileMetadata = new File();
-            fileMetadata.setName(p.getFileName().toString());
-            java.io.File filePath = new java.io.File(s1);
+            fileMetadata.setName("config.json");
+            java.io.File filePath = new java.io.File("config.json");
             FileContent mediaContent = new FileContent("text/plain", filePath);
             File file = driveService.files().create(fileMetadata, mediaContent)
                     .setFields("id")
                     .execute();
             System.out.println("File ID: " + file.getId());
+            Files.delete(Path.of("config.json"));
+
+            //MOVE FILE
+            fileId = file.getId();
+            String pageToken = null;
+            do {
+                FileList result = driveService.files().list()
+                        .setSpaces("drive")
+                        .setFields("nextPageToken, files(id, name)")
+                        .setPageToken(pageToken)
+                        .execute();
+                for (File file2 : result.getFiles()) {
+                    if(file2.getName().equals(s1)){
+                        folderId = file2.getId();
+                    }
+                    System.out.printf("Found file: %s (%s)\n",
+                            file2.getName(), file2.getId());
+                }
+                pageToken = result.getNextPageToken();
+            } while (pageToken != null);
+
+
         } catch (IOException e) {
             e.printStackTrace();
         }
-
+        File file3 = null;
+        try {
+            file3 = driveService.files().get(fileId)
+                    .setFields("parents")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        StringBuilder previousParents = new StringBuilder();
+        for (String parent : file3.getParents()) {
+            previousParents.append(parent);
+            previousParents.append(',');
+        }
+// Move the file to the new folder
+        try {
+            file3 = driveService.files().update(fileId, null)
+                    .setAddParents(folderId)
+                    .setRemoveParents(previousParents.toString())
+                    .setFields("id, parents")
+                    .execute();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
 
     }
 
